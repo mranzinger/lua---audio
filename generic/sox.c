@@ -33,16 +33,16 @@
 /* --     May 24th, 2012, 8:38PM - wrote load function - Soumith Chintala */
 /* ---------------------------------------------------------------------- */
 
-struct SoxAudioData
+typedef struct
 {
     THTensor *t;
     int       nChannels;
     long      bufferSize;
     int       bitsPerSample;
     double    rate;
-};
+} libsox_(AudioData);
 
-static SoxAudioData libsox_(read_audio_file)(const char *file_name)
+static libsox_(AudioData) libsox_(read_audio_file)(const char *file_name)
 {
   // Create sox objects and read into int32_t buffer
   sox_format_t *fd;
@@ -75,7 +75,7 @@ static SoxAudioData libsox_(read_audio_file)(const char *file_name)
   free(buffer);
   THTensor_(free)(tensor);
 
-  SoxAudioData ret;
+  libsox_(AudioData) ret;
   ret.t = tensor;
   ret.nChannels = nchannels;
   ret.bufferSize = buffer_size;
@@ -86,12 +86,12 @@ static SoxAudioData libsox_(read_audio_file)(const char *file_name)
 
 static int libsox_(Main_load)(lua_State *L) {
   const char *filename = luaL_checkstring(L, 1);
-  SoxAudioData data = libsox_(read_audio_file)(filename);
+  libsox_(AudioData) data = libsox_(read_audio_file)(filename);
   luaT_pushudata(L, data.t, torch_Tensor);
   return 1;
 }
 
-void l_pushTableNumber(lua_State *L, char *key, lua_Number val)
+inline void libsox_(TableNum)(lua_State *L, char *key, lua_Number val)
 {
    luaT_pushstring(L, key);
    luaT_pushnumber(L, val);
@@ -100,7 +100,7 @@ void l_pushTableNumber(lua_State *L, char *key, lua_Number val)
 
 static int libsox_(Main_load_full)(lua_State *L) {
   const char *filename = luaL_checkstring(L, 1);
-  SoxAudioData data = libsox_(read_audio_file)(filename);  
+  libsox_(AudioData) data = libsox_(read_audio_file)(filename);  
 
   luaT_newtable(L);
 
@@ -108,10 +108,10 @@ static int libsox_(Main_load_full)(lua_State *L) {
   luaT_pushudata(L, data.t, torch_Tensor);
   luaT_settable(L, -3);
 
-  l_pushTableNumber(L, "numChannels", data.nChannels);
-  l_pushTableNumber(L, "bufferSize", data.bufferSize);
-  l_pushTableNumber(L, "bitsPerSample", data.bitsPerSample);
-  l_pushTableNumber(L, "rate", data.rate);
+  libsox_(TableNum)(L, "numChannels", data.nChannels);
+  libsox_(TableNum)(L, "bufferSize", data.bufferSize);
+  libsox_(TableNum)(L, "bitsPerSample", data.bitsPerSample);
+  libsox_(TableNum)(L, "rate", data.rate);
 
   return 1;
 }
