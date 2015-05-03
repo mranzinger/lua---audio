@@ -38,8 +38,8 @@ typedef struct
     THTensor *t;
     int       nChannels;
     long      bufferSize;
-    int       bitsPerSample;
     double    rate;
+    double    lenSecs;
 } libsox_(AudioData);
 
 static libsox_(AudioData) libsox_(read_audio_file)(const char *file_name)
@@ -50,8 +50,6 @@ static libsox_(AudioData) libsox_(read_audio_file)(const char *file_name)
   if (fd == NULL)
     abort_("[read_audio_file] Failure to read file");
   
-  int bitsPerSample = fd->encoding.bits_per_sample;
- 
   int nchannels = fd->signal.channels;
   long buffer_size = fd->signal.length;
   double rate = fd->signal.rate;
@@ -79,8 +77,8 @@ static libsox_(AudioData) libsox_(read_audio_file)(const char *file_name)
   ret.t = tensor;
   ret.nChannels = nchannels;
   ret.bufferSize = buffer_size;
-  ret.bitsPerSample = bitsPerSample;
-  ret.rate = fd->signal.rate;
+  ret.rate = rate;
+  ret.lenSecs = (samples_read / nchannels) / rate;
   return ret;
 }
 
@@ -93,25 +91,25 @@ static int libsox_(Main_load)(lua_State *L) {
 
 inline void libsox_(TableNum)(lua_State *L, char *key, lua_Number val)
 {
-   luaT_pushstring(L, key);
-   luaT_pushnumber(L, val);
-   luaT_settable(L, -3);
+   lua_pushstring(L, key);
+   lua_pushnumber(L, val);
+   lua_settable(L, -3);
 }
 
 static int libsox_(Main_load_full)(lua_State *L) {
   const char *filename = luaL_checkstring(L, 1);
   libsox_(AudioData) data = libsox_(read_audio_file)(filename);  
 
-  luaT_newtable(L);
+  lua_newtable(L);
 
-  luaT_pushstring(L, "tensor");
+  lua_pushstring(L, "tensor");
   luaT_pushudata(L, data.t, torch_Tensor);
-  luaT_settable(L, -3);
+  lua_settable(L, -3);
 
   libsox_(TableNum)(L, "numChannels", data.nChannels);
   libsox_(TableNum)(L, "bufferSize", data.bufferSize);
-  libsox_(TableNum)(L, "bitsPerSample", data.bitsPerSample);
   libsox_(TableNum)(L, "rate", data.rate);
+  libsox_(TableNum)(L, "lenSecs", data.lenSecs);
 
   return 1;
 }

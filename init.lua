@@ -57,6 +57,27 @@ local function load(filename)
 end
 rawset(audio, 'load', load)
 
+local function load_full(filename)
+   if not filename then
+      print(dok.usage('audio.load',
+                       'loads an audio file into a torch.Tensor', nil,
+                       {type='string', help='path to file', req=true}))
+      dok.error('missing file name', 'audio.load')
+   end
+   if not paths.filep(filename) then
+      dok.error('Specified filename: ' .. filename .. ' not found', 'audio.load')
+   end
+   local tensor
+   if not xlua.require 'libsox' then
+      dok.error('libsox package not found, please install libsox','audio.load')
+   end
+   local a = torch.Tensor().libsox.load_full(filename)
+   return a
+end
+rawset(audio, 'load_full', load_full)
+
+ 
+
 ----------------------------------------------------------------------
 -- spectrogram
 --
