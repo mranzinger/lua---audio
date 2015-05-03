@@ -33,8 +33,16 @@
 /* --     May 24th, 2012, 8:38PM - wrote load function - Soumith Chintala */
 /* ---------------------------------------------------------------------- */
 
+struct SoxAudioData
+{
+    THTensor *t;
+    int       nChannels;
+    long      bufferSize;
+    int       bitsPerSample;
+    double    rate;
+};
 
-static THTensor * libsox_(read_audio_file)(const char *file_name)
+static SoxAudioData libsox_(read_audio_file)(const char *file_name)
 {
   // Create sox objects and read into int32_t buffer
   sox_format_t *fd;
@@ -42,8 +50,11 @@ static THTensor * libsox_(read_audio_file)(const char *file_name)
   if (fd == NULL)
     abort_("[read_audio_file] Failure to read file");
   
+  int bitsPerSample = fd->encoding.bits_per_sample;
+ 
   int nchannels = fd->signal.channels;
   long buffer_size = fd->signal.length;
+  double rate = fd->signal.rate;
   int32_t *buffer = (int32_t *)malloc(sizeof(int32_t) * buffer_size);
   size_t samples_read = sox_read(fd, buffer, buffer_size);
   if (samples_read == 0)
@@ -64,20 +75,51 @@ static THTensor * libsox_(read_audio_file)(const char *file_name)
   free(buffer);
   THTensor_(free)(tensor);
 
-  // return tensor 
-  return tensor;
+  SoxAudioData ret;
+  ret.t = tensor;
+  ret.nChannels = nchannels;
+  ret.bufferSize = buffer_size;
+  ret.bitsPerSample = bitsPerSample;
+  ret.rate = fd->signal.rate;
+  return ret;
 }
 
 static int libsox_(Main_load)(lua_State *L) {
   const char *filename = luaL_checkstring(L, 1);
-  THTensor *tensor = libsox_(read_audio_file)(filename);
-  luaT_pushudata(L, tensor, torch_Tensor);
+  SoxAudioData data = libsox_(read_audio_file)(filename);
+  luaT_pushudata(L, data.t, torch_Tensor);
+  return 1;
+}
+
+void l_pushTableNumber(lua_State *L, char *key, lua_Number val)
+{
+   luaT_pushstring(L, key);
+   luaT_pushnumber(L, val);
+   luaT_settable(L, -3);
+}
+
+static int libsox_(Main_load_full)(lua_State *L) {
+  const char *filename = luaL_checkstring(L, 1);
+  SoxAudioData data = libsox_(read_audio_file)(filename);  
+
+  luaT_newtable(L);
+
+  luaT_pushstring(L, "tensor");
+  luaT_pushudata(L, data.t, torch_Tensor);
+  luaT_settable(L, -3);
+
+  l_pushTableNumber(L, "numChannels", data.nChannels);
+  l_pushTableNumber(L, "bufferSize", data.bufferSize);
+  l_pushTableNumber(L, "bitsPerSample", data.bitsPerSample);
+  l_pushTableNumber(L, "rate", data.rate);
+
   return 1;
 }
 
 static const luaL_Reg libsox_(Main__)[] =
 {
   {"load", libsox_(Main_load)},
+  {"load_full", libsox_(Main_load_full)},
   {NULL, NULL}
 };
 

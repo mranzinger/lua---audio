@@ -2,7 +2,7 @@ package = "audio"
 version = "0.1-0"
 
 source = {
-   url = "git://github.com/soumith/lua---audio",
+   url = "git://github.com/mranzinger/lua---audio",
    tag = "master"
 }
 
